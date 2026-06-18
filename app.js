@@ -2306,9 +2306,13 @@ function render() {
     els.roundLabel.textContent = `第 ${state.answers.length + 1} 问`;
   } else {
     state.emergencyMode = dataset === DATASETS.football;
-    els.questionText.textContent = dataset === DATASETS.football
-      ? "压箱底区分问题已经全部问完，请公布答案验证匹配率。"
-      : "线索还不够明确，请公布答案计算匹配率。";
+    if (dataset === DATASETS.football && latestScores.length) {
+      els.questionText.textContent = "压箱底区分问题已经问完，我来猜当前最相关的球员。";
+      els.roundLabel.textContent = `第 ${state.answers.length} 问`;
+      setTimeout(() => showResult(latestScores), 180);
+      return;
+    }
+    els.questionText.textContent = "线索还不够明确，请公布答案计算匹配率。";
   }
 }
 
