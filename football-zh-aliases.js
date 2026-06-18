@@ -1334,7 +1334,7 @@ window.FOOTBALL_ZH_ALIASES = {
   "Warren Zaïre-Emery": "沃伦·扎伊尔-埃梅里",
   "Wei Minzhe": "魏敏哲",
   "Wei Shihao": "韦世豪",
-  "Wei Xiangxin": "魏祥新",
+  "Wei Xiangxin": "魏祥鑫",
   "Wei Zhen": "魏震",
   "Wen Jiabao": "温家宝",
   "Wesley": "韦斯利",

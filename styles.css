@@ -410,6 +410,39 @@ body[data-mode="football"] .mode-tab.is-active {
   gap: 10px;
 }
 
+.preliminary-slot {
+  grid-column: 1 / -1;
+  min-height: 50px;
+}
+
+.preliminary-button {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid color-mix(in srgb, var(--accent-2) 52%, var(--line));
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent-2) 14%, rgba(255, 255, 255, 0.06));
+  cursor: pointer;
+  font-weight: 900;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--fast), background var(--fast), transform var(--fast);
+}
+
+.preliminary-button.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.preliminary-button:hover,
+.preliminary-button:focus-visible {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--accent-2) 22%, rgba(255, 255, 255, 0.08));
+  outline: none;
+}
+
 .answer-button {
   min-height: 76px;
   padding: 12px 10px;
@@ -503,6 +536,10 @@ body[data-mode="football"] .mode-tab.is-active {
   margin-top: 12px;
   display: grid;
   gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
 }
 
 .history-item {
@@ -822,6 +859,17 @@ body[data-mode="football"] .mode-tab.is-active {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.notice-actions.is-stacked {
+  grid-template-columns: 1fr;
+}
+
+.notice-actions.is-stacked .primary-action,
+.notice-actions.is-stacked .secondary-action {
+  width: 100%;
+  min-height: 52px;
+  font-size: 16px;
 }
 
 .result-sheet {

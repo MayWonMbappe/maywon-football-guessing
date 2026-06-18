@@ -667,6 +667,7 @@ const els = {
   undoBtn: document.querySelector("#undoBtn"),
   skipBtn: document.querySelector("#skipBtn"),
   whyBtn: document.querySelector("#whyBtn"),
+  preliminaryGuessBtn: document.querySelector("#preliminaryGuessBtn"),
   restartTop: document.querySelector("#restartTop"),
   resultLayer: document.querySelector("#resultLayer"),
   closeResult: document.querySelector("#closeResult"),
@@ -848,7 +849,7 @@ function applyExternalFootballData() {
     if (footballQuestionHasSignal(candidates, q)) questions.set(q.id, q);
   }
   for (const q of historicalClubQuestions(candidates)) {
-    if (footballQuestionHasSignal(candidates, q)) questions.set(q.id, q);
+    if (footballQuestionHasSignal(candidates, q) && !questions.has(q.id)) questions.set(q.id, q);
   }
   for (const q of FOOTBALL_EXTRA_QUESTIONS) {
     if (footballQuestionHasSignal(candidates, q)) questions.set(q.id, q);
@@ -911,6 +912,7 @@ function sanitizeFootballName(value) {
   return String(value || "")
     .normalize("NFKC")
     .replace(/\s*[†‡*]+\s*$/g, "")
+    .replace(/\s*\((?:footballer|player)[^)]*\)\s*$/gi, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -1115,9 +1117,13 @@ function polishFootballQuestion(entry) {
   const [text, rawChip] = overrides[normalizedId] || [entry.text, entry.chip];
   const chip = sanitizeClubName(rawChip);
   const family = entry.family || questionFamilyFromId(normalizedId);
+  const currentClub = family === "club" && /当前效力/.test(entry.text || "");
+  const currentLeague = family === "scope" && normalizedId.startsWith("league_") && /现在/.test(entry.text || "");
   const polishedText =
     family === "club" && chip
-      ? `TA 曾效力 ${chip} 吗？`
+      ? currentClub
+        ? `TA 当前效力 ${chip} 吗？`
+        : `TA 曾效力 ${chip} 吗？`
       : text;
   return {
     id: normalizedId,
@@ -1126,7 +1132,12 @@ function polishFootballQuestion(entry) {
     weight: entry.weight || 1,
     starter: Boolean(entry.starter),
     family,
-    meta: entry.meta ? { ...entry.meta, club: sanitizeClubName(entry.meta.club) } : undefined,
+    meta: {
+      ...(entry.meta || {}),
+      club: sanitizeClubName(entry.meta && entry.meta.club),
+      currentClub,
+      currentLeague,
+    },
   };
 }
 
@@ -1328,6 +1339,8 @@ function newGame() {
     guessCooldownUntil: 0,
     lowSignalNoticeShown: false,
     emergencyMode: false,
+    preliminaryPromptShown: false,
+    preliminaryUnlocked: false,
     currentCandidateIds: new Set(dataset.candidates.map((candidate) => candidate.id)),
     currentStage: 1,
     lastQuestionReason: "",
@@ -1349,6 +1362,8 @@ function pushHistory() {
     guessCooldownUntil: state.guessCooldownUntil,
     lowSignalNoticeShown: state.lowSignalNoticeShown,
     emergencyMode: state.emergencyMode,
+    preliminaryPromptShown: state.preliminaryPromptShown,
+    preliminaryUnlocked: state.preliminaryUnlocked,
     currentCandidateIds: [...state.currentCandidateIds],
     currentStage: state.currentStage,
     lastQuestionReason: state.lastQuestionReason,
@@ -1364,6 +1379,8 @@ function restoreHistory() {
   state.guessCooldownUntil = last.guessCooldownUntil;
   state.lowSignalNoticeShown = last.lowSignalNoticeShown;
   state.emergencyMode = Boolean(last.emergencyMode);
+  state.preliminaryPromptShown = Boolean(last.preliminaryPromptShown || state.preliminaryPromptShown);
+  state.preliminaryUnlocked = Boolean(last.preliminaryUnlocked);
   state.currentCandidateIds = new Set(last.currentCandidateIds);
   state.currentStage = last.currentStage;
   state.lastQuestionReason = last.lastQuestionReason;
@@ -1465,6 +1482,10 @@ function expectedForQuestion(candidate, q) {
   }
   if ((q.family || questionFamilyFromId(q.id)) === "club") {
     const askedClub = q.meta && q.meta.club ? q.meta.club : q.chip;
+    if (q.meta && q.meta.currentClub) {
+      if (!candidate.meta.club) return null;
+      return normalizeText(candidate.meta.club) === normalizeText(askedClub) ? 1 : 0;
+    }
     const clubs = [...(candidate.meta.clubs || []), candidate.meta.club].filter(Boolean);
     if (askedClub && clubs.some((club) => normalizeText(club) === normalizeText(askedClub))) return 1;
   }
@@ -1946,23 +1967,8 @@ function dynamicLetterQuestions(candidates) {
 }
 
 function latinNameTerms(candidate) {
-  const terms = [candidate.name, ...(candidate.aliases || [])];
-  const nonNameTerms = new Set([
-    normalizeText(candidate.meta && candidate.meta.club),
-    normalizeText(candidate.meta && candidate.meta.country),
-    ...(candidate.tags || []).map(normalizeText),
-  ]);
-  return [...new Set(
-    terms
-      .map((term) => sanitizeFootballName(term))
-      .filter(
-        (term) =>
-          /[a-z]/i.test(term) &&
-          !/[\u4e00-\u9fff]/.test(term) &&
-          !/\bfootballer\b|\bborn\b|\bplayer\b/i.test(term) &&
-          !nonNameTerms.has(normalizeText(term)),
-      ),
-  )];
+  const name = sanitizeFootballName(candidate.name);
+  return /[a-z]/i.test(name) && !/[\u4e00-\u9fff]/.test(name) ? [name] : [];
 }
 
 function dynamicTeammateQuestions(candidates, perClubLimit = 1) {
@@ -2276,6 +2282,7 @@ function render() {
   dataset = DATASETS[els.body.dataset.mode] || DATASETS.general;
   latestScores = scoreCandidates();
   currentQuestion = chooseQuestion(latestScores);
+  const normalGuessReady = shouldGuess(latestScores);
 
   els.sceneArt.src = dataset.art;
   els.modeLabel.textContent = dataset.modeLabel;
@@ -2294,12 +2301,15 @@ function render() {
     showLowSignalNotice(latestScores[0] ? latestScores[0].matchRate : 0);
   }
 
-  if (shouldGuess(latestScores)) {
+  if (normalGuessReady) {
+    els.preliminaryGuessBtn.classList.remove("is-visible");
     els.questionText.textContent = "我已经锁定一个答案。";
     els.roundLabel.textContent = `第 ${state.answers.length} 问`;
     setTimeout(() => showResult(latestScores), 180);
     return;
   }
+
+  updatePreliminaryGuessOffer(latestScores, normalGuessReady);
 
   if (currentQuestion) {
     els.questionText.textContent = currentQuestion.text;
@@ -2314,6 +2324,51 @@ function render() {
     }
     els.questionText.textContent = "线索还不够明确，请公布答案计算匹配率。";
   }
+}
+
+function updatePreliminaryGuessOffer(scores, normalGuessReady) {
+  if (dataset !== DATASETS.football || normalGuessReady || !scores.length) {
+    els.preliminaryGuessBtn.classList.remove("is-visible");
+    return;
+  }
+  const highCandidates = scores.filter((item) => (item.matchRate || 0) >= 0.9);
+  const lead =
+    scores.length > 1
+      ? (scores[0].matchRate || 0) - (scores[1].matchRate || 0)
+      : 0;
+  const newlyEligible = highCandidates.length >= 2 && lead >= 0.04;
+  if (newlyEligible) state.preliminaryUnlocked = true;
+  els.preliminaryGuessBtn.classList.toggle("is-visible", state.preliminaryUnlocked);
+  if (newlyEligible && !state.preliminaryPromptShown && !state.resultOpen) {
+    state.preliminaryPromptShown = true;
+    window.setTimeout(showPreliminaryGuessChoice, 120);
+  }
+}
+
+function showPreliminaryGuessChoice() {
+  if (!state || state.resultOpen || !latestScores.length) return;
+  document.querySelector("#preliminaryGuessNotice")?.remove();
+  const layer = document.createElement("div");
+  layer.className = "notice-layer";
+  layer.id = "preliminaryGuessNotice";
+  layer.innerHTML = `
+    <section class="notice-sheet" role="dialog" aria-modal="true" aria-labelledby="preliminaryGuessTitle">
+      <p class="notice-kicker">初步思路</p>
+      <h2 id="preliminaryGuessTitle">我已经有了一个初步答案</h2>
+      <p>目前有多名高相关度候选，但其中一名已经稍微领先。你可以让我继续推进问题，也可以现在尝试猜测。</p>
+      <div class="notice-actions is-stacked">
+        <button class="secondary-action" id="preliminaryContinue" type="button">返回不猜测并推进问题</button>
+        <button class="primary-action" id="preliminaryTry" type="button">尝试猜测</button>
+      </div>
+    </section>
+  `;
+  document.body.append(layer);
+  layer.querySelector("#preliminaryContinue").addEventListener("click", () => layer.remove());
+  layer.querySelector("#preliminaryTry").addEventListener("click", () => {
+    layer.remove();
+    showResult(latestScores);
+  });
+  layer.querySelector("#preliminaryContinue").focus({ preventScroll: true });
 }
 
 function renderAnswers() {
@@ -2439,7 +2494,7 @@ function saveGuessRecord(scoreItem, status) {
     skin: knownSkinTone(candidate),
     time: new Date().toLocaleString(),
   });
-  localStorage.setItem("footballGuessRecords", JSON.stringify(records.slice(0, 12)));
+  localStorage.setItem("footballGuessRecords", JSON.stringify(records.slice(0, 100)));
   renderGuessHistory();
 }
 
@@ -2458,7 +2513,7 @@ function renderGuessHistory() {
   const records = guessRecords();
   count.textContent = String(records.length);
   list.innerHTML = records.length
-    ? records.slice(0, 5).map((item) => `
+    ? records.map((item) => `
       <div class="history-item">
         <strong>${item.name}</strong>
         <span>${historyRecordText(item)}</span>
@@ -2531,8 +2586,17 @@ function showQuestionReason() {
 }
 
 function applyCandidateAnswer(q, answerKey) {
-  if (dataset !== DATASETS.football || (answerKey !== "yes" && answerKey !== "no")) return true;
-  if (!state.emergencyMode) return true;
+  if (dataset !== DATASETS.football) return true;
+  const isExactAnswer = answerKey === "yes" || answerKey === "no";
+  const isPositiveCurrentClub =
+    answerKey === "yes" &&
+    (q.family || questionFamilyFromId(q.id)) === "club" &&
+    q.meta && q.meta.currentClub;
+  const isPositiveCurrentLeague =
+    answerKey === "yes" &&
+    q.id.startsWith("league_") &&
+    (/现在/.test(q.text || "") || q.meta && q.meta.currentLeague);
+  if (!isExactAnswer || (!state.emergencyMode && !isPositiveCurrentClub && !isPositiveCurrentLeague)) return true;
   const keepExpected = answerKey === "yes" ? 1 : 0;
   const nextIds = new Set(
     dataset.candidates
@@ -2924,6 +2988,7 @@ els.answerGrid.addEventListener("click", (event) => {
 
 els.skipBtn.addEventListener("click", () => answerQuestion("unknown", { skipped: true }));
 els.whyBtn.addEventListener("click", showQuestionReason);
+els.preliminaryGuessBtn.addEventListener("click", showPreliminaryGuessChoice);
 els.undoBtn.addEventListener("click", restoreHistory);
 els.undoTopBtn.addEventListener("click", restoreHistory);
 els.restartTop.addEventListener("click", newGame);
