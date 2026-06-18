@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 460" role="img" aria-label="幻问机界面插画">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#22362d"/>
+      <stop offset=".52" stop-color="#151a16"/>
+      <stop offset="1" stop-color="#412a22"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" x2="1">
+      <stop offset="0" stop-color="#3fd6b5"/>
+      <stop offset=".52" stop-color="#f5b84d"/>
+      <stop offset="1" stop-color="#ff6f59"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" values="0 0 0 0 0.24 0 0 0 0 0.84 0 0 0 0 0.72 0 0 0 .62 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect width="900" height="460" rx="34" fill="url(#bg)"/>
+  <path d="M80 356c112-42 195-42 292 0s191 42 309 0 164-31 201-14v118H80Z" fill="#0e120f" opacity=".72"/>
+  <path d="M80 94h740M80 144h740M80 194h740M80 244h740M80 294h740" stroke="#f7f1e6" stroke-opacity=".07"/>
+  <path d="M120 70v288M190 70v288M260 70v288M330 70v288M400 70v288M470 70v288M540 70v288M610 70v288M680 70v288M750 70v288" stroke="#f7f1e6" stroke-opacity=".055"/>
+  <g transform="translate(450 220)" filter="url(#glow)">
+    <path d="M-138 92h276l38 76H-176Z" fill="#20271f" stroke="#f7f1e6" stroke-opacity=".18" stroke-width="3"/>
+    <path d="M-94 55c4-95 55-154 94-154S90-40 94 55Z" fill="#151a16" stroke="#f7f1e6" stroke-opacity=".2" stroke-width="3"/>
+    <path d="M-76 50c3-72 44-116 76-116S73-22 76 50Z" fill="#1b2a25"/>
+    <path d="M-57 40c2-51 34-84 57-84s55 33 57 84Z" fill="url(#glass)" opacity=".88"/>
+    <path d="M-36-8c25-18 52-16 79 5" fill="none" stroke="#fff8e6" stroke-opacity=".58" stroke-width="7" stroke-linecap="round"/>
+    <path d="M-107 93 0 145 107 93" fill="none" stroke="url(#glass)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g opacity=".9">
+    <rect x="102" y="107" width="176" height="118" rx="12" fill="#151a16" stroke="#f7f1e6" stroke-opacity=".16"/>
+    <path d="M126 193c20-29 45-42 73-42s52 13 62 42" fill="#27332b"/>
+    <circle cx="192" cy="143" r="27" fill="#f5b84d"/>
+    <path d="M156 201h72" stroke="#3fd6b5" stroke-width="6" stroke-linecap="round"/>
+    <rect x="622" y="104" width="176" height="124" rx="12" fill="#151a16" stroke="#f7f1e6" stroke-opacity=".16"/>
+    <path d="M652 192c23-31 52-45 84-45s48 13 56 45" fill="#322725"/>
+    <circle cx="720" cy="141" r="25" fill="#ff6f59"/>
+    <path d="M669 204h85" stroke="#f5b84d" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M184 300c74-32 135-28 182 12" stroke="#3fd6b5" stroke-opacity=".46" stroke-width="8"/>
+    <path d="M548 315c61-41 121-45 180-10" stroke="#ff6f59" stroke-opacity=".48" stroke-width="8"/>
+    <path d="M336 82c54-25 96-25 141 0" stroke="#f5b84d" stroke-opacity=".35" stroke-width="6"/>
+  </g>
+</svg>

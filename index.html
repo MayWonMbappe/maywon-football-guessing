@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>猜球员 | 足球猜人游戏</title>
+    <link rel="icon" href="./assets/stadium-panel.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-mode="football">
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="./index.html" aria-label="猜球员">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" role="img">
+              <path d="M16 3 27 9.5v13L16 29 5 22.5v-13L16 3Z" />
+              <path d="M16 8.2 22.4 12v7.7L16 23.5 9.6 19.7V12L16 8.2Z" />
+            </svg>
+          </span>
+          <span>猜球员</span>
+        </a>
+
+        <button class="icon-button" id="restartTop" type="button" title="重新开始" aria-label="重新开始">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 3-6.7" />
+            <path d="M3 4.5v5h5" />
+          </svg>
+        </button>
+      </header>
+
+      <main class="play-layout">
+        <section class="stage" aria-labelledby="questionText">
+          <div class="scene-frame">
+            <img id="sceneArt" src="./assets/stadium-panel.svg" alt="" />
+            <div class="scene-glint" aria-hidden="true"></div>
+            <div class="signal-strip" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+
+          <div class="question-zone" id="questionZone">
+            <div class="round-meta">
+              <span id="modeLabel">猜球员挑战</span>
+              <span id="roundLabel">第 1 问</span>
+            </div>
+            <button class="quick-undo" id="undoTopBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 14 4 9l5-5" />
+                <path d="M4 9h9.5a6 6 0 1 1 0 12H11" />
+              </svg>
+              <span>回到上一问</span>
+            </button>
+            <h1 id="questionText">正在校准问题...</h1>
+            <div class="answer-grid" id="answerGrid" aria-label="回答"></div>
+          </div>
+        </section>
+
+        <aside class="side-panel" aria-label="局势">
+          <section class="meter-block">
+            <div class="meter-head">
+              <span>灵感强度</span>
+              <strong id="confidenceLabel">0%</strong>
+            </div>
+            <div class="meter-track" aria-hidden="true">
+              <span id="confidenceFill"></span>
+            </div>
+            <div class="pool-count" id="poolLabel">候选加载中</div>
+          </section>
+
+          <section class="signal-block">
+            <div class="block-title">
+              <span>候选云</span>
+              <span id="signalLabel">未锁定</span>
+            </div>
+            <div class="signal-list" id="signalList"></div>
+          </section>
+
+          <section class="trace-block">
+            <div class="block-title">
+              <span>线索</span>
+              <span id="clueCount">0</span>
+            </div>
+            <div class="clue-trail" id="clueTrail"></div>
+          </section>
+
+          <section class="answer-block">
+            <div class="block-title">
+              <span>公布答案</span>
+              <span id="revealStatus">待验证</span>
+            </div>
+            <form class="reveal-form" id="revealForm" autocomplete="off">
+              <input id="revealInput" type="search" aria-label="正确答案" placeholder="输入你想的球员" />
+              <button class="tool-button reveal-submit" type="submit">计算</button>
+            </form>
+            <div class="match-output" id="matchOutput" hidden></div>
+          </section>
+
+          <div class="side-actions">
+            <button class="tool-button" id="undoBtn" type="button" title="回退一步">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 14 4 9l5-5" />
+                <path d="M4 9h9.5a6 6 0 1 1 0 12H11" />
+              </svg>
+              <span>回退</span>
+            </button>
+            <button class="tool-button" id="skipBtn" type="button" title="跳过这一问">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 5 8 7-8 7V5Z" />
+                <path d="M18 5v14" />
+              </svg>
+              <span>跳过</span>
+            </button>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <div class="result-layer" id="resultLayer" hidden>
+      <section class="result-sheet" role="dialog" aria-modal="true" aria-labelledby="resultName">
+        <button class="icon-button sheet-close" id="closeResult" type="button" title="关闭" aria-label="关闭">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12" />
+            <path d="M18 6 6 18" />
+          </svg>
+        </button>
+        <p class="result-kicker" id="resultKicker">我猜是</p>
+        <div class="result-main">
+          <div class="result-avatar" id="resultAvatar" aria-hidden="true"></div>
+          <div>
+            <h2 id="resultName">球员名</h2>
+            <p id="resultBio">简介</p>
+          </div>
+        </div>
+        <div class="tag-list" id="resultTags"></div>
+        <div class="result-actions">
+          <button class="primary-action" id="correctBtn" type="button">对了，再来一局</button>
+          <button class="secondary-action" id="wrongBtn" type="button">不是，继续猜</button>
+          <button class="secondary-action" id="revealFromResultBtn" type="button">公布答案</button>
+        </div>
+        <div class="alternatives" id="alternatives"></div>
+      </section>
+    </div>
+
+    <script src="./football-data.js" defer></script>
+    <script src="./football-zh-aliases.js" defer></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
