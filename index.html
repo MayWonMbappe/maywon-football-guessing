@@ -157,9 +157,52 @@
       </section>
     </div>
 
+    <div class="tutorial-layer" id="tutorialLayer" hidden>
+      <section class="tutorial-sheet" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+        <p class="tutorial-kicker">新手教程</p>
+        <h2 id="tutorialTitle">欢迎来到猜球员</h2>
+        <p class="tutorial-intro">
+          先在心里确定一名球员，再按真实情况回答问题。我会根据你的答案逐步缩小候选范围。
+        </p>
+        <div class="tutorial-grid">
+          <article>
+            <h3>基本规则与操作</h3>
+            <ul>
+              <li>可回答“是 / 大概是 / 不确定 / 大概不是 / 不是”，拿不准时不要勉强选绝对答案。</li>
+              <li>答错可以使用“回到上一问”；不想回答可点“跳过”。</li>
+              <li>右侧“公布答案”可随时输入球员名，查看系统匹配与完整姓名。</li>
+            </ul>
+          </article>
+          <article>
+            <h3>球员库范围</h3>
+            <ul>
+              <li>覆盖欧洲五大联赛、葡超、土超、荷甲、中超、美职联、沙超、2026 世界杯球员及大量现役球星和退役名宿。</li>
+              <li>冷门青年球员或刚完成转会的球员，资料可能比知名球员更容易出现边界情况。</li>
+            </ul>
+          </article>
+          <article class="tutorial-wide">
+            <h3>容易答错的细节</h3>
+            <ul>
+              <li>名字字母按正式英文全名判断。可提前在“公布答案”区输入部分英文名，查看收录的完整姓名。</li>
+              <li>“球员本人参加世界杯”和“球员所属国家队参加世界杯”是两件不同的事。</li>
+              <li>进攻、防守按主要位置区分。边后卫/边翼卫默认归为防守球员，例如阿什拉夫。</li>
+              <li>迪马尔科等球员有时更像边前卫或边路前场；遇到这类跨位置情况，优先用“大概是 / 大概不是 / 不确定”降低误伤。</li>
+            </ul>
+          </article>
+        </div>
+        <button class="primary-action tutorial-action" id="tutorialDismiss" type="button" disabled>
+          我已了解规则并准备好开始（5s）
+        </button>
+      </section>
+    </div>
+
     <script src="./football-data.js" defer></script>
     <script src="./football-extra-data.js" defer></script>
     <script src="./football-zh-aliases.js" defer></script>
-    <script src="./app.js" defer></script>
+    <script src="./football-csl-2026-patch.js?v=20260619" defer></script>
+    <script src="./football-expanded-leagues-2026.js?v=20260619c" defer></script>
+    <script src="./football-expanded-leagues-zh.js?v=20260619c" defer></script>
+    <script src="./football-expanded-leagues-patch.js?v=20260619c" defer></script>
+    <script src="./app.js?v=20260619c" defer></script>
   </body>
 </html>

@@ -1422,6 +1422,7 @@ function scoreCandidates() {
         used += 1;
         penalty += weight * Math.pow(value - expected, 2) + hardMismatchPenalty(q, item.answerKey, candidate, expected);
       }
+      penalty += contextualFootballContradictionPenalty(candidate);
       const baseScore = Math.exp(-penalty * 2.35);
       return {
         candidate,
@@ -1438,6 +1439,21 @@ function scoreCandidates() {
     ...item,
     confidence: item.score / total,
   }));
+}
+
+function contextualFootballContradictionPenalty(candidate) {
+  if (dataset !== DATASETS.football || !isRetiredFootballCandidate(candidate)) return 0;
+  const hasCurrentActivity = state.answers.some((item) => {
+    if (!isPositiveAnswer(item.answerKey)) return false;
+    const answeredQuestion = findQuestionById(item.questionId);
+    if (!answeredQuestion) return false;
+    if (answeredQuestion.id === "world_cup_2026_participant") return true;
+    const family = answeredQuestion.family || questionFamilyFromId(answeredQuestion.id);
+    if (family === "club" && answeredQuestion.meta && answeredQuestion.meta.currentClub) return true;
+    return family === "scope" &&
+      (answeredQuestion.meta && answeredQuestion.meta.currentLeague || /现在|当前/.test(answeredQuestion.text || ""));
+  });
+  return hasCurrentActivity ? 12 : 0;
 }
 
 function expectedForQuestion(candidate, q) {
@@ -1551,7 +1567,11 @@ function canonicalFootballCountry(value) {
     drcongo: "democraticrepublicofthecongo",
     democraticrepubliccongo: "democraticrepublicofthecongo",
     southkorea: "korearepublic",
+    koreasouth: "korearepublic",
     korearepublic: "korearepublic",
+    bosniaherzegovina: "bosniaandherzegovina",
+    turkiye: "turkey",
+    thegambia: "gambia",
     usa: "unitedstates",
     us: "unitedstates",
     uk: "england",
@@ -1667,14 +1687,15 @@ function chooseQuestion(scores) {
     if (state.answers.length === 0 && starter) return starter;
   }
 
-  const questionPool = unanswered.filter((q) => isQuestionAllowedByRhythm(q, scores));
-  if (!questionPool.length && dataset !== DATASETS.football) return null;
+  const hardUnlocked = unanswered.filter((q) => !isQuestionLockedByPositive(q));
+  const questionPool = hardUnlocked.filter((q) => isQuestionAllowedByRhythm(q, scores));
+  if (!hardUnlocked.length || !questionPool.length && dataset !== DATASETS.football) return null;
 
   if (dataset === DATASETS.football) {
-    const selected = chooseFootballQuestion(scores, questionPool.length ? questionPool : unanswered);
+    const selected = chooseFootballQuestion(scores, questionPool.length ? questionPool : hardUnlocked);
     if (selected) return selected;
     state.emergencyMode = true;
-    return chooseEmergencyFootballQuestion(scores, unanswered, footballQuestionCandidates(scores));
+    return chooseEmergencyFootballQuestion(scores, hardUnlocked, footballQuestionCandidates(scores));
   }
 
   const pool = scores.slice(0, Math.min(10, scores.length));
@@ -1797,7 +1818,9 @@ function chooseEmergencyFootballQuestion(scores, questionPool, candidates) {
     ...questionPool,
     ...emergencyFootballQuestions(scores),
   ].filter((q, index, all) =>
-    !answered.has(q.id) && all.findIndex((item) => item.id === q.id) === index,
+    !answered.has(q.id) &&
+    !isQuestionLockedByPositive(q) &&
+    all.findIndex((item) => item.id === q.id) === index,
   );
   const allowed = expandedPool.filter((q) => {
     const family = q.family || questionFamilyFromId(q.id);
@@ -2119,6 +2142,7 @@ function isUsefulClubQuestion(q, scores) {
   if (!yes.length || yes.length === leaders.length) return false;
   const clubName = q.chip || "";
   const broadOrLeaderClub = yes.length >= 2 || leaders[0].candidate.traits.has(q.id);
+  if (q.meta && q.meta.currentClub) return broadOrLeaderClub;
   return broadOrLeaderClub && isRecognizableHistoryClub(clubName);
 }
 
@@ -2137,6 +2161,7 @@ function questionFamilyCooldown(family) {
 }
 
 function isQuestionLockedByPositive(q) {
+  if (isQuestionLockedByEfficiencyAnswer(q)) return true;
   const family = q.family || questionFamilyFromId(q.id);
   const isRepeatDetail =
     q.id.startsWith("teammate_") ||
@@ -2156,6 +2181,36 @@ function isQuestionLockedByPositive(q) {
     if (family === "region" && answeredFamily === "country") return true;
     return false;
   });
+}
+
+function isQuestionLockedByEfficiencyAnswer(q) {
+  if (q.id === "club_core" || q.id === "club_rotation") {
+    const counterpartId = q.id === "club_core" ? "club_rotation" : "club_core";
+    return state.answers.some((item) =>
+      item.questionId === counterpartId && item.answerKey !== "unknown",
+    );
+  }
+
+  if (q.id === "retired") {
+    return state.answers.some((item) => {
+      if (!isPositiveAnswer(item.answerKey)) return false;
+      const answeredQuestion = findQuestionById(item.questionId);
+      if (!answeredQuestion) return false;
+      if (answeredQuestion.id === "world_cup_2026_participant") return true;
+      const family = answeredQuestion.family || questionFamilyFromId(answeredQuestion.id);
+      if (family === "club" && answeredQuestion.meta && answeredQuestion.meta.currentClub) return true;
+      return family === "scope" &&
+        (answeredQuestion.meta && answeredQuestion.meta.currentLeague || /现在|当前/.test(answeredQuestion.text || ""));
+    });
+  }
+
+  if (!["forward", "attacking_half", "defensive_half"].includes(q.id)) return false;
+  const attackingSpecific = new Set(["pos_striker", "pos_winger", "pos_attacking_mid"]);
+  const defensiveSpecific = new Set(["pos_center_back", "pos_defensive_mid", "pos_fullback", "goalkeeper"]);
+  return state.answers.some((item) =>
+    isPositiveAnswer(item.answerKey) &&
+    (attackingSpecific.has(item.questionId) || defensiveSpecific.has(item.questionId)),
+  );
 }
 
 function questionsSinceFamily(family) {
@@ -2937,6 +2992,51 @@ function displayName(candidate) {
   return `${chinese}（${candidate.name}）`;
 }
 
+function initWelcomeTutorial() {
+  const layer = document.querySelector("#tutorialLayer");
+  const dismiss = document.querySelector("#tutorialDismiss");
+  if (!layer || !dismiss) return;
+
+  const storageKey = "footballGuessTutorialSeenV2";
+  let alreadySeen = false;
+  try {
+    alreadySeen = window.localStorage.getItem(storageKey) === "1";
+  } catch (error) {
+    alreadySeen = false;
+  }
+  if (alreadySeen) return;
+
+  layer.hidden = false;
+  document.body.classList.add("tutorial-open");
+  let remaining = 5;
+  const updateLabel = () => {
+    dismiss.textContent = remaining > 0
+      ? `我已了解规则并准备好开始（${remaining}s）`
+      : "我已了解规则并准备好开始";
+  };
+  updateLabel();
+  const timer = window.setInterval(() => {
+    remaining -= 1;
+    updateLabel();
+    if (remaining <= 0) {
+      window.clearInterval(timer);
+      dismiss.disabled = false;
+      dismiss.focus();
+    }
+  }, 1000);
+
+  dismiss.addEventListener("click", () => {
+    if (dismiss.disabled) return;
+    layer.hidden = true;
+    document.body.classList.remove("tutorial-open");
+    try {
+      window.localStorage.setItem(storageKey, "1");
+    } catch (error) {
+      // Storage can be unavailable in privacy modes; the game still remains usable.
+    }
+  }, { once: true });
+}
+
 function scoreTerm(query, term) {
   if (!term) return 0;
   if (term === query) return 100;
@@ -3002,6 +3102,7 @@ els.revealInput.addEventListener("input", () => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (document.querySelector("#tutorialLayer")?.hidden === false) return;
   if (els.resultLayer.hidden === false && event.key === "Escape") {
     closeResultAndContinue();
     return;
@@ -3012,3 +3113,4 @@ document.addEventListener("keydown", (event) => {
 });
 
 newGame();
+initWelcomeTutorial();
